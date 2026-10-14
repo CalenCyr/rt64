@@ -959,10 +959,13 @@ namespace RT64 {
     }
     
     void RDP::setPrimDepth(uint16_t z, uint16_t dz) {
-        const float Fixed15ToFloat = 1.0f / 32767.0f;
+        // The RDP compares depth as 18-bit values and widens the 15-bit primitive depth by shifting it left by 3, so the
+        // maximum primitive depth (0x7FFF -> 0x3FFF8) stays below a depth buffer cleared to the maximum (0x3FFFF). Use the
+        // same scale as the depth buffer conversion (ColorConverter::D16::toF) so that comparison keeps working.
+        const float Fixed18ToFloat = 1.0f / (32768.0f * 8.0f - 1);
         const float Fixed16ToFloat = 1.0f / 65535.0f;
         hlslpp::float2 &primDepth = primDepthStack[primDepthStackSize - 1];
-        primDepth.x = (z & 0x7FFFU) * Fixed15ToFloat;
+        primDepth.x = ((z & 0x7FFFU) << 3) * Fixed18ToFloat;
         primDepth.y = (dz & 0xFFFFU) * Fixed16ToFloat;
         state->updateDrawStatusAttribute(DrawAttribute::PrimDepth);
     }

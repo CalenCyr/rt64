@@ -470,6 +470,7 @@ namespace RT64 {
         bool previousVertexTestZ = false;
         const RenderPipeline *previousPipeline = nullptr;
         RenderRect previousScissor;
+        float previousViewportDepth = -1.0f;
         interop::RasterParams rasterParams;
         RenderDescriptorSet *descRealFbSet = framebuffer.descRealFbSet->get();
         RenderDescriptorSet *descDummyFbSet = framebuffer.descDummyFbSet->get();
@@ -479,6 +480,7 @@ namespace RT64 {
             previousVertexTestZ = false;
             previousPipeline = nullptr;
             previousScissor = RenderRect();
+            previousViewportDepth = -1.0f;
             worker->commandList->setGraphicsPipelineLayout(rendererPipelineLayout);
             worker->commandList->setGraphicsDescriptorSet(descCommonSet->get(), 0);
             worker->commandList->setGraphicsDescriptorSet(descTextureSet->get(), 1);
@@ -564,6 +566,22 @@ namespace RT64 {
                 if (previousScissor != triangles.scissor) {
                     worker->commandList->setScissors(triangles.scissor);
                     previousScissor = triangles.scissor;
+                }
+
+                // Draws using the primitive depth source must produce exactly the same depth on every pixel, so that
+                // overlapping triangles of the same draw fail a depth test against each other like on the RDP (e.g. single
+                // pass blended shadows). Interpolating the depth from the vertex shader leaves rounding noise, so collapse
+                // the viewport's depth range to the primitive depth instead.
+                const float viewportDepth = triangles.primDepthViewport ? triangles.primDepth : -1.0f;
+                if (previousViewportDepth != viewportDepth) {
+                    RenderViewport viewport = framebuffer.viewport;
+                    if (triangles.primDepthViewport) {
+                        viewport.minDepth = triangles.primDepth;
+                        viewport.maxDepth = triangles.primDepth;
+                    }
+
+                    worker->commandList->setViewports(viewport);
+                    previousViewportDepth = viewportDepth;
                 }
 
                 if (previousPipeline != triangles.pipeline) {
@@ -1622,6 +1640,8 @@ namespace RT64 {
                         triangles.faceCount = call.callDesc.triangleCount;
                         triangles.vertexTestZ = (vertexTestZCallIndex >= 0);
                         triangles.postBlendDitherNoise = false;
+                        triangles.primDepthViewport = (call.shaderDesc.otherMode.zSource() == G_ZS_PRIM) && (call.shaderDesc.otherMode.cycleType() != G_CYC_COPY);
+                        triangles.primDepth = call.callDesc.rdpParams.primDepth.x;
 
                         float invRatioScale = 1.0f / aspectRatioScale;
                         float horizontalMisalignment = 0.0f;
