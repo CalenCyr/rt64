@@ -28,6 +28,7 @@ namespace RT64 {
         Type type;
         uint32_t width;
         uint32_t height;
+        uint32_t usedHeight;
         std::unique_ptr<RenderTexture> pixelTexture;
         std::unique_ptr<RenderTexture> booleanTexture;
         std::unique_ptr<FramebufferDrawChangesDescriptorSet> drawDescSet;

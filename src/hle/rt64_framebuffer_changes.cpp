@@ -14,6 +14,7 @@ namespace RT64 {
         type = Type::Color;
         width = 0;
         height = 0;
+        usedHeight = 0;
         used = false;
     }
 
@@ -50,6 +51,7 @@ namespace RT64 {
                 (changes.second.height == alignedHeight))
             {
                 changes.second.used = true;
+                changes.second.usedHeight = height;
                 return changes.second;
             }
         }
@@ -60,6 +62,7 @@ namespace RT64 {
         changes.type = type;
         changes.width = alignedWidth;
         changes.height = alignedHeight;
+        changes.usedHeight = height;
         changes.used = true;
 
         RenderFormat pixelFormat;

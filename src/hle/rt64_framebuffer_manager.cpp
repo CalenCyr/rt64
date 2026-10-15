@@ -97,7 +97,10 @@ namespace RT64 {
             RenderTargetKey targetKey(it->second.addressStart, it->second.width, it->second.siz, it->second.lastWriteType);
             RenderTarget &target = targetManager.get(targetKey);
             if (!target.isEmpty()) {
-                target.copyFromChanges(renderWorker, *fbChange, it->second.width, it->second.height, 0, shaderLibrary);
+                // The framebuffer may have grown since the changes were read. Rows past the ones that were read
+                // hold stale data from a previous use of the pooled (32-row aligned) change textures.
+                const uint32_t rowCount = std::min(it->second.height, fbChange->usedHeight);
+                target.copyFromChanges(renderWorker, *fbChange, it->second.width, rowCount, 0, shaderLibrary);
             }
         }
     }
